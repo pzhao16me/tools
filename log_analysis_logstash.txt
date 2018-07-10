@@ -1,0 +1,73 @@
+一般情况下，对于日志的解析和分析，是比较费心费时的一件事，
+但是借助logstash和es可以快速的把
+相关的日志文件解析后导入到es进行后期的日志分析和排错。
+下面就一般的流程作为说明，以供参考
+准备材料：日志文件，es集群 logstash安装文件
+步骤一：
+	1） 因为logstash是基于Java开发的，相关的运行需要jvm支持，因此，在需要在日志文件所在的机器上
+		需要安装Java并配置相关的环境信息，
+		具体可以参考：https://www.cnblogs.com/yuanbo123/p/5819564.html
+	2）配置logstash
+		a:下载logstash*.zip文件（https://www.elastic.co/downloads/logstash）
+		b:解压到相关的目录
+		c:解压后得到相关的目录结构（其中包括bin,config等目录)
+		d:编写相关的log.conf文件，示例如下：log.conf,并将log.conf文件移动至config文件夹下
+		e:在logstash的目录下运行：./bin/logstash -f ./config/log.cong -t  检查log.conf
+		  配置文件是否需要正确，若出现场错误，注意检查格式和相关的符号
+		f: 若上一步测试没有错误，则直接可以运行：./bin/logstash -f ./config/log.conf
+
+/root/log_collect/opt/jdk1.8.0_171
+
+###############################################################################################
+
+log.conf
+#定义日志文件所在的目录
+input {
+        file {
+                path =>"/var/www/effects.wondershare.com/effects-store/Runtime/Logs/tmp.log"
+                #若日志为多行信息显示，需要codec配置
+                codec => multiline  {
+                        pattern => "^\["
+                        negate => true
+                        what => "previous"
+                }
+                start_position=>"beginning"   
+        }
+      }
+# filter为logstash的解析日志模块    
+filter {
+      # 解析日志生成相关的IP，访问地址，日志级别
+      grok {
+
+        match => { 
+              "message" => "%{SYSLOG5424SD:time} %{IP:hostip} %{URIPATHPARAM:url}\s*%{LOGLEVEL:loglevel}" 
+              
+                 }
+            }
+      #解析log生成的时间为时间戳
+      grok{
+        match => {
+              "message" => "%{TIMESTAMP_ISO8601:log_create_date}"
+                 }
+        }
+      # 替换插入信息的时间戳为日志生成的时间戳
+      date {
+              match => ["log_create_date", "yyyy-MM-dd HH:mm:ss" ]
+              target => "@timestamp"
+ 
+                   
+        }
+    }
+
+#定义日志输出的配置，此处为写入解析结果到es集群
+output {
+    #判断type类型的value，并写入相同(或不同)的Elasticsearch集群
+    elasticsearch {
+      hosts => ["10.10.18.113:9200"]    #指定elasticsearch集群节点地址
+      index => "system-log"  #指定收集日志到elasticsearch后的格式(注：dd必须小写)
+                  }
+
+
+      }
+     
+################################################################################################
