@@ -1,0 +1,35 @@
+-- v2ray  
+bash <(curl -L -s https://install.direct/go.sh)
+
+
+在键outbound和outboundDetour之间添加以下代码
+-- config.json 
+
+  "inboundDetour": [
+ {
+   "protocol": "shadowsocks",
+   "port": port,
+   "settings": {
+     "method": "aes-256-cfb",
+     "password": "password",
+     "udp": false
+   }
+ }
+  ],
+  
+  
+  
+  
+ wget https://raw.githubusercontent.com/flyzy2005/ss-fly/master/ss-fly.sh && chmod +x ss-fly.sh && ./ss-fly.sh -bbr
+reboot
+
+
+sudo systemctl start v2ray
+sudo systemctl stop v2ray
+sudo systemctl restart v2ray
+
+
+
+
+sysctl net.ipv4.tcp_available_congestion_control
+lsmod | grep bbr
